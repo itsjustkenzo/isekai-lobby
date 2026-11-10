@@ -1,0 +1,80 @@
+.native-assets-builder{min-height:100svh;padding:28px 4%;background:#fff8ed;color:#292338}.native-builder-head{display:flex;gap:24px;align-items:center;flex-wrap:wrap;border-bottom:2px solid #292338;padding-bottom:24px}.native-builder-head>div{flex:1}.native-builder-head h1{font-size:44px;margin:8px 0;font-family:inherit;line-height:1;letter-spacing:-1.5px}.native-builder-kicker{font-size:10px;letter-spacing:1.8px;font-weight:800}.native-builder-intro{max-width:760px;line-height:1.7}.native-builder-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:32px;margin-top:32px}.native-builder-layout aside{border-right:1px solid #d7c9c8;padding-right:24px}.native-terrain-card{display:grid;width:100%;text-align:left;gap:8px;border:1px solid #292338;border-radius:9px;background:white;padding:16px;margin:12px 0;cursor:pointer}.native-terrain-card.selected{background:#ffdf36;box-shadow:3px 3px #292338}.native-terrain-card small{color:#66586c}.native-terrain-heading{display:flex;justify-content:space-between;align-items:center;gap:20px}.native-terrain-heading p{line-height:1.6}.native-terrain-form{max-width:620px;background:white;border:2px solid #292338;border-radius:12px;padding:24px;margin:24px 0}.native-terrain-form p{font-size:12px;line-height:1.7}.native-asset-category{padding:20px 0;border-bottom:1px solid #d7c9c8}.native-asset-category h3{display:flex;gap:12px;align-items:center}.native-asset-category>p{font-size:12px;color:#766779}.native-asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:15px}.native-asset-grid figure{margin:0;padding:12px;border:1px solid #d7c9c8;border-radius:8px;background:white}.native-asset-grid figure>div{height:135px;display:grid;place-items:center;background:repeating-conic-gradient(#ece7df 0% 25%,#fff8ef 0% 50%) 0/16px 16px}.native-asset-grid img{image-rendering:pixelated;max-height:128px;max-width:100%;object-fit:contain;min-width:48px}.native-asset-grid figcaption{font-size:11px;padding-top:12px;overflow-wrap:anywhere}.native-builder-empty{max-width:600px;padding:40px 0;line-height:1.7}.native-generation-status{display:flex;gap:20px;align-items:center;padding:24px;background:#fff0b2;border:2px solid #292338;border-radius:10px;box-shadow:3px 4px #292338}.native-generation-status p{font-size:12px}.native-generation-status progress{display:block;width:min(450px,100%);accent-color:#ed3988;margin:10px 0}.native-builder-spinner{display:inline-block;flex:none;width:38px;height:38px;border:4px solid #dec5a0;border-top-color:#ed3988;border-right-color:#292338;border-radius:50%;animation:native-spin 1s linear infinite}.native-builder-spinner.small{width:18px;height:18px;border-width:2px}@keyframes native-spin{to{transform:rotate(360deg)}}@media(max-width:700px){.native-builder-layout{grid-template-columns:1fr}.native-builder-layout aside{border:0;padding:0}.native-builder-head{gap:14px}.native-builder-head h1{font-size:32px}.native-terrain-heading{align-items:flex-start;flex-direction:column}.native-asset-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(prefers-reduced-motion:reduce){.native-builder-spinner{animation:none}}
+.native-asset-grid figure>.native-tree-preview{align-items:end;padding-bottom:3px;background:linear-gradient(#b7aa9444 1px,transparent 1px),linear-gradient(90deg,#b7aa9444 1px,transparent 1px),#fff8ef;background-size:32px 32px;background-position:center bottom}.native-tree-size{display:block;margin-top:5px;color:#766779;font-size:10px}
+.native-delete-asset{margin-top:12px;width:100%;padding:7px;border:1px solid #a42f48;border-radius:5px;background:#fff1f3;color:#92243c;font:inherit;font-size:11px;font-weight:700;cursor:pointer}.native-delete-asset:hover{background:#ffdfe5}.native-delete-asset:disabled{opacity:.5;cursor:not-allowed}
+.native-terrain-entry{margin:12px 0}.native-terrain-entry .native-terrain-card{margin-bottom:0}.native-delete-terrain{margin-top:7px}
+.native-asset-category[data-category=trees] .native-asset-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,224px),1fr))}.native-asset-category[data-category=trees] figure>.native-tree-preview{height:270px;background-size:64px 64px}.native-asset-category[data-category=trees] .native-tree-preview img{max-height:none;max-width:none;image-rendering:pixelated}
+.terrain-plan-review { margin: 20px 0; padding: 20px; background: #171d2b; border: 1px solid #566478; border-radius: 10px; }
+.terrain-plan-review fieldset { margin: 14px 0; padding: 16px; border: 1px solid #566478; display: grid; gap: 10px; min-width: 0; }
+.terrain-plan-review label { display: grid; gap: 6px; }
+.terrain-plan-review legend label { display: flex; align-items: center; gap: 8px; }
+.terrain-plan-review input:not([type=checkbox]), .terrain-plan-review textarea, .terrain-plan-review select { width: 100%; box-sizing: border-box; padding: 9px; background: #0c1321; color: #edf3ff; border: 1px solid #64748b; border-radius: 4px; font: inherit; }
+.terrain-plan-review input[type=checkbox] { width: 18px; height: 18px; }
+.terrain-plan-review fieldset:disabled { opacity: .75; }
+.native-builder-head > .back-button,
+.native-builder-head > .design-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 100%;
+  min-height: 42px;
+  margin: 0;
+  padding: 10px 16px;
+  border: 1.5px solid #292338;
+  border-radius: 8px;
+  box-shadow: 0 3px 0 #292338;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+  color: #292338;
+  cursor: pointer;
+}
+.native-builder-head > .back-button { background: #fff; }
+.native-builder-head > .back-button:hover:not(:disabled) { background: #fff0b2; }
+.native-builder-head > .design-button:hover:not(:disabled) { background: #ffe96b; }
+.native-builder-head > button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #292338; }
+.native-builder-head > button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
+.native-terrain-asset-list { margin-top: 24px; scroll-margin-top: 20px; }
+.native-asset-list-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.native-builder-head > .design-button.secondary { background: #fff; }
+.mechanics-builder-layout { display: grid; grid-template-columns: minmax(260px, 440px) minmax(0, 1fr); gap: 32px; align-items: start; }
+.mechanics-builder-layout .native-terrain-form { width: 100%; }
+.mechanics-builder-layout select { padding: 10px; border: 1.5px solid #292338; border-radius: 8px; background: white; color: #292338; font: inherit; }
+.mechanics-library { padding-top: 24px; }
+.mechanic-card { margin: 16px 0; padding: 20px; background: white; border: 1.5px solid #292338; border-radius: 10px; overflow-wrap: anywhere; }
+.mechanic-card p { white-space: pre-wrap; line-height: 1.6; }
+.mechanic-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.mechanic-actions button { width: auto; margin: 0; }
+@media(max-width: 800px) { .mechanics-builder-layout { grid-template-columns: 1fr; gap: 0; } }
+.mechanic-preview { margin: 24px 0; padding: 20px; background: #fffdf3; border: 2px solid #292338; border-radius: 10px; }
+.mechanic-preview canvas { display: block; width: min(100%, 720px); height: auto; image-rendering: pixelated; border: 2px solid #292338; cursor: crosshair; }
+.mechanic-preview-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; margin: 16px 0; }
+.mechanic-preview-controls label { display: grid; gap: 6px; }
+.mechanic-preview-controls select { padding: 10px; font: inherit; }
+.mechanic-preview-controls .design-button { width: auto; margin: 0; }
+.mechanic-object-preview { width: 64px; height: 128px; object-fit: contain; image-rendering: pixelated; justify-self: start; background: #fff3d6; border: 1px solid #d7c9c8; }
+.mechanic-map-host { width: 100%; height: clamp(320px, 48vw, 480px); position: relative; overflow: hidden; background: #151820; border: 2px solid #292338; border-radius: 6px; }
+.mechanic-preview .mechanic-map-host canvas { display: block; width: auto; max-width: none; height: auto; border: 0; }
+.mechanic-map-host:focus-visible { outline: 3px solid #215cfa; outline-offset: 4px; }
+.building-assets-grid { grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); }
+.building-assets-grid figure > div { height: 240px; }
+.building-assets-grid img { max-height: 224px; min-width: 0; }
+.building-concept-preview { width: 100%; max-height: 240px; object-fit: contain; }
+.building-assets-grid figure { overflow: auto; }
+.building-assets-grid figure > .building-tile-preview { position: relative; display: block; background: linear-gradient(#84786555 1px,transparent 1px),linear-gradient(90deg,#84786555 1px,transparent 1px),#fff8ed; background-size: 32px 32px; margin: auto; }
+.building-tile-preview img { display: block; max-width: none; max-height: none; min-width: 0; }
+.building-footprint { position: absolute; bottom: 0; left: 0; width: 100%; border: 2px dashed #b5790c; pointer-events: none; }
+.building-entrance { position: absolute; bottom: 0; width: 8px; height: 8px; background: #20a45c; border: 1px solid #153d27; }
+.building-generation-status { margin: 24px 0; scroll-margin-top: 20px; }
+.building-loading-art { position: relative; flex: 0 0 80px; width: 80px; height: 80px; }
+.building-loading-art span { position: absolute; image-rendering: pixelated; animation: building-piece 1.8s steps(3,end) infinite; }
+.building-loading-roof { left: 4px; top: 8px; width: 72px; height: 28px; background: #c95b61; clip-path: polygon(50% 0,100% 100%,0 100%); }
+.building-loading-wall { left: 12px; top: 36px; width: 56px; height: 36px; background: #d6a66c; border: 4px solid #624631; animation-delay: .2s !important; }
+.building-loading-window { left: 20px; top: 44px; width: 12px; height: 12px; background: #8bd2df; border: 3px solid #624631; animation-delay: .4s !important; }
+.building-loading-door { left: 44px; top: 48px; width: 12px; height: 24px; background: #624631; animation-delay: .6s !important; }
+.building-loading-dots { animation: building-dots 1.2s steps(3,end) infinite; }
+@keyframes building-piece { 0%,100% { opacity: .35; transform: translateY(-4px); } 50% { opacity: 1; transform: translateY(0); } }
+@keyframes building-dots { 0% { opacity: .2; } 100% { opacity: 1; } }
+@media(prefers-reduced-motion:reduce) { .building-loading-art span,.building-loading-dots { animation: none; } }
