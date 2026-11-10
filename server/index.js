@@ -1,3 +1,4 @@
+import {mountDetailedStyle} from './detailed-style.js';
 import {mountInteriorImageCollection} from './interior-image-collection.js';
 import {mountInteriorPrototype} from './interior-prototype.js';
 import {npcAppearanceInput,generateNpcAppearance,npcGenerationError} from './npc-appearance.js';
@@ -236,6 +237,7 @@ async function start() {
   const { database, terrainCollections, games, users, sessions, worlds, houses, assets, npcs, playerInventories, itemDeletionGuards, generatedMapDrafts } = await connectDatabase();
   const auth = requireUser(sessions, users);
   const generating = new Set();
+  mountDetailedStyle(app,{auth,generating});
   mountInteriorImageCollection(app,{auth,terrains:terrainCollections,generating,raw:express.raw({type:()=>true,limit:MAX_UPLOAD_BYTES})});
   mountInteriorPrototype(app,{auth,terrains:terrainCollections,generating});
   mountTerrainBuilder(app,{auth,terrains:terrainCollections,generating,deleteAsset:(userId,terrainId,assetId)=>withDatabaseTransaction(session=>deleteTerrainAsset(database,userId,terrainId,assetId,session)),deleteTerrain:(userId,terrainId)=>withDatabaseTransaction(session=>deleteTerrainCollection(database,userId,terrainId,session))});

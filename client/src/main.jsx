@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { api } from './api.js';
 import './styles.css';
 
+const DetailedStylePrototype = lazy(() => import('./DetailedStylePrototype.jsx'));
 const WorldEditor = lazy(() => import('./world/WorldEditor.jsx'));
 const BuildingAssetsBuilder = lazy(() => import('./BuildingAssetsBuilder.jsx'));
 const NpcAssetsBuilder = lazy(() => import('./NpcAssetsBuilder.jsx'));
@@ -142,7 +143,7 @@ function CharacterCreator({ user, onUpdate, onSaved, onCancel }) {
   </>);
 }
 
-function CharacterCard({ user, onPlay, onCreateWorld, onGenerateMap, onAssetsBuilder, onInteriorAssetsBuilder, onNpcAssetsBuilder, onBuildingAssetsBuilder, onRecreate, onLogout }) {
+function CharacterCard({ user, onPlay, onCreateWorld, onGenerateMap, onAssetsBuilder, onDetailedStyle, onInteriorAssetsBuilder, onNpcAssetsBuilder, onBuildingAssetsBuilder, onRecreate, onLogout }) {
   return (<>
     <h2>Welcome, {user.username}!</h2>
     <p>Your hero is ready. What's next?</p>
@@ -155,6 +156,7 @@ function CharacterCard({ user, onPlay, onCreateWorld, onGenerateMap, onAssetsBui
     <button type="button" className="choice portal-generate-map" onClick={onAssetsBuilder}><strong>Assets Builder</strong><small>Create terrain collections and reusable game assets</small></button>
     <button type="button" className="choice portal-generate-map" onClick={onBuildingAssetsBuilder}><strong>Building Assets Builder</strong><small>Create reusable pixel-art buildings</small></button>
     <button type="button" className="choice portal-generate-map" onClick={onInteriorAssetsBuilder}><strong>Interior Asset Builder</strong><small>Create floor paint, walls, furniture and indoor props</small></button>
+    <button type="button" className="choice portal-generate-map" onClick={onDetailedStyle}><strong>Detailed style prototype</strong><small>Test 48px world tiles and a 96px character</small></button>
     <button type="button" className="choice portal-generate-map" onClick={onNpcAssetsBuilder}><strong>NPC Assets</strong><small>Create NPC appearances, names and character prompts</small></button>
     <button type="button" className="text-button" onClick={onRecreate}>Recreate character</button>
     <button type="button" className="text-button" onClick={onLogout}>Log out</button>
@@ -183,11 +185,11 @@ function App() {
   const step = user === undefined ? 'loading' : !user ? 'login' : !user.character || recreating ? 'create' : view ?? 'ready';
   const stepLabel = { loading: '01 / LOGIN', login: '01 / LOGIN', create: '02 / CREATE', ready: '03 / READY' }[step];
 
-  if (step === 'world' || step === 'play' || step === 'generated' || step === 'assets' || step === 'buildings' || step === 'npcs' || step === 'interior-assets') {
+  if (step === 'world' || step === 'play' || step === 'generated' || step === 'assets' || step === 'buildings' || step === 'npcs' || step === 'interior-assets' || step === 'detailed-style') {
     return (
-      <main className={(step === 'assets' || step === 'buildings' || step === 'npcs' || step === 'interior-assets') ? 'assets-page' : 'editor-page'}>
+      <main className={(step === 'assets' || step === 'buildings' || step === 'npcs' || step === 'interior-assets' || step === 'detailed-style') ? 'assets-page' : 'editor-page'}>
         <Suspense fallback={<p className="editor-loading">Opening your world…</p>}>
-          {step === 'interior-assets' ? <AssetsBuilder key="interior" interior user={user} onPrototype={map=>{setPrototypeMap(map);setView('generated');}} onBack={()=>setView(null)}/> : step === 'npcs' ? <NpcAssetsBuilder onBack={()=>setView(null)}/> : step === 'buildings' ? <BuildingAssetsBuilder user={user} onBack={()=>setView(null)}/> : step === 'assets' ? <AssetsBuilder user={user} onBack={()=>setView(null)}/> : step === 'generated' ? <GeneratedMapEditor user={user} initialMap={prototypeMap} onBack={()=>{setPrototypeMap(null);setView(null);}}/> : step === 'world'
+          {step === 'detailed-style' ? <DetailedStylePrototype user={user} onBack={()=>setView(null)}/> : step === 'interior-assets' ? <AssetsBuilder key="interior" interior user={user} onPrototype={map=>{setPrototypeMap(map);setView('generated');}} onBack={()=>setView(null)}/> : step === 'npcs' ? <NpcAssetsBuilder onBack={()=>setView(null)}/> : step === 'buildings' ? <BuildingAssetsBuilder user={user} onBack={()=>setView(null)}/> : step === 'assets' ? <AssetsBuilder user={user} onBack={()=>setView(null)}/> : step === 'generated' ? <GeneratedMapEditor user={user} initialMap={prototypeMap} onBack={()=>{setPrototypeMap(null);setView(null);}}/> : step === 'world'
             ? <WorldEditor user={user} onBack={() => setView(null)} />
             : <PlayView user={user} onBack={() => setView(null)} onCreateWorld={() => setView('world')} />}
         </Suspense>
@@ -210,7 +212,7 @@ function App() {
           {step === 'loading' && <p>Opening the portal…</p>}
           {step === 'login' && <LoginForm onLogin={setUser} />}
           {step === 'create' && <CharacterCreator user={user} onUpdate={setUser} onSaved={(next) => { setUser(next); setRecreating(false); }} onCancel={user.character ? () => setRecreating(false) : null} />}
-          {step === 'ready' && <CharacterCard user={user} onPlay={() => setView('play')} onCreateWorld={() => setView('world')} onGenerateMap={()=>setView('generated')} onAssetsBuilder={()=>setView('assets')} onInteriorAssetsBuilder={()=>setView('interior-assets')} onNpcAssetsBuilder={()=>setView('npcs')} onBuildingAssetsBuilder={()=>setView('buildings')} onRecreate={() => setRecreating(true)} onLogout={logout} />}
+          {step === 'ready' && <CharacterCard user={user} onPlay={() => setView('play')} onCreateWorld={() => setView('world')} onGenerateMap={()=>setView('generated')} onDetailedStyle={()=>setView('detailed-style')} onAssetsBuilder={()=>setView('assets')} onInteriorAssetsBuilder={()=>setView('interior-assets')} onNpcAssetsBuilder={()=>setView('npcs')} onBuildingAssetsBuilder={()=>setView('buildings')} onRecreate={() => setRecreating(true)} onLogout={logout} />}
           {step === 'create' && <button type="button" className="text-button" onClick={logout}>Log out</button>}
           <div className="login-note"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="7" width="8" height="7" rx="2" /><path d="M5.5 7V4a2.5 2.5 0 0 1 5 0v3" /></svg>One account. Every adventure.</div>
         </div>
