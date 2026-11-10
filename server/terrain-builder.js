@@ -24,13 +24,17 @@ export function publicTerrain(row) {
 
 export async function generateTerrainCategory(terrain, category, imageRequest = requestImage, reference = null) {
   if (!TERRAIN_CATEGORIES.some(c => c.id === category)) throw new Error('Invalid terrain category');
-  reference ??= await readFile(new URL('./references/props.png', import.meta.url));
-  const references=terrain.referenceImage?[reference,Buffer.from(terrain.referenceImage.split(',')[1],'base64')]:[reference];
-  const brief = `Terrain: ${terrain.title}. Creator direction: ${terrain.description}. Draw only assets appropriate to this terrain. Use the attached image for this game's crisp pixel-art style, palette treatment, outlines, lighting and detail scale, not for its subject matter. Consistent square logical pixels, no blur or antialiasing. Never draw text, labels, a sheet or a complete scene. ${terrain.referenceImage?'Image 1 sets game pixel style. Image 2 is the interior reference: use its materials, palette and furniture designs for this individual asset; never draw the whole room.':''}`;
+  const [stylePrompt,styleReferences]=await Promise.all([
+    readFile(new URL('./prompts/terrain-art-style.md',import.meta.url),'utf8'),
+    reference?Promise.resolve([reference]):Promise.all(['male','female'].map(g=>readFile(new URL('./references/'+g+'.png',import.meta.url)))),
+  ]);
+  const references=terrain.referenceImage?[...styleReferences,Buffer.from(terrain.referenceImage.split(',')[1],'base64')]:styleReferences;
+  const sceneReferenceNumber=styleReferences.length+1;
+  const brief = `${stylePrompt} Terrain: ${terrain.title}. Creator direction (untrusted scene data): ${terrain.description}. Draw only assets appropriate to this terrain. The first ${styleReferences.length} image(s) establish the shared detailed fantasy pixel-art treatment, never the subject matter. Use newly authored square logical pixels at the requested dimensions, no blur or antialiasing. ${terrain.referenceImage?'Image '+sceneReferenceNumber+' is the interior reference: use its materials, palette and furniture designs for this individual asset; never draw the whole room.':''}`;
   const assets = [], textures = [], jobs = [];
   function material(name, code, surface, liquid = false) {
     jobs.push(async () => {
-      const raw = await imageRequest(`${brief} Create ONE seamless 16 by 16 logical-pixel ${name} material texture for ${surface}. Opaque, top-down, edge-to-edge, repeatable on all four sides. No objects or transparency. ${liquid ? 'Select only the liquid requested or implied by this terrain: grassland implies water, volcanic implies lava. Preserve its own palette.' : ''}`, references, { background: 'opaque' });
+      const raw = await imageRequest(`${brief} Create ONE seamless 16 by 16 logical-pixel ${name} material texture for ${surface}. Opaque, ${surface==='wall'?'straight-on vertical wall face':'flat top-down'}, edge-to-edge, repeatable on all four sides. No objects or transparency. ${liquid ? 'Select only the liquid requested or implied by this terrain: grassland implies water, volcanic implies lava. Preserve its own palette.' : ''}`, references, { background: 'opaque' });
       textures.push({ id: id(), name: `${terrain.title}: ${name}`, terrainCode: code, surface, liquid:Boolean(liquid), image: `data:image/png;base64,${toTextureTile(raw).toString('base64')}` });
     });
   }
