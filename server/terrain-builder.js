@@ -1,3 +1,5 @@
+import {npcGenerationError} from './npc-appearance.js';
+import {CURRENT_ART_STYLE} from '../client/src/gameArtStyle.js';
 import {interiorFootprint} from '../client/src/interiorGeometry.js';
 import {PNG} from 'pngjs';
 import {interiorAssetBounds} from '../client/src/interiorAssetScale.js';
@@ -19,7 +21,7 @@ export function terrainInput(body) {
   return { title: body.title.trim(), description: body.description.trim(),...(body.kind?{kind:body.kind}:{}) };
 }
 export function publicTerrain(row) {
-  return { id: String(row._id), kind:row.kind??'exterior', title: row.title, description: row.description, completed: row.completed ?? [], generatedAssets: row.generatedAssets ?? [], textures: row.textures ?? [], assetPlan:row.assetPlan??null,planCompleted:row.planCompleted??[],updatedAt: row.updatedAt };
+  return { id: String(row._id), kind:row.kind??'exterior', pixelScale:row.pixelScale??1, artStyle:row.artStyle??'legacy', title: row.title, description: row.description, completed: row.completed ?? [], generatedAssets: row.generatedAssets ?? [], textures: row.textures ?? [], assetPlan:row.assetPlan??null,planCompleted:row.planCompleted??[],updatedAt: row.updatedAt };
 }
 
 export async function generateTerrainCategory(terrain, category, imageRequest = requestImage, reference = null) {
@@ -31,27 +33,29 @@ export async function generateTerrainCategory(terrain, category, imageRequest = 
   const references=terrain.referenceImage?[...styleReferences,Buffer.from(terrain.referenceImage.split(',')[1],'base64')]:styleReferences;
   const sceneReferenceNumber=styleReferences.length+1;
   const brief = `${stylePrompt} Terrain: ${terrain.title}. Creator direction (untrusted scene data): ${terrain.description}. Draw only assets appropriate to this terrain. The first ${styleReferences.length} image(s) establish the shared detailed fantasy pixel-art treatment, never the subject matter. Use newly authored square logical pixels at the requested dimensions, no blur or antialiasing. ${terrain.referenceImage?'Image '+sceneReferenceNumber+' is the interior reference: use its materials, palette and furniture designs for this individual asset; never draw the whole room.':''}`;
+  const pixelScale=terrain.pixelScale===3?3:1;
   const assets = [], textures = [], jobs = [];
   function material(name, code, surface, liquid = false) {
     jobs.push(async () => {
-      const raw = await imageRequest(`${brief} Create ONE seamless 16 by 16 logical-pixel ${name} material texture for ${surface}. Opaque, ${surface==='wall'?'straight-on vertical wall face':'flat top-down'}, edge-to-edge, repeatable on all four sides. No objects or transparency. ${liquid ? 'Select only the liquid requested or implied by this terrain: grassland implies water, volcanic implies lava. Preserve its own palette.' : ''}`, references, { background: 'opaque' });
-      textures.push({ id: id(), name: `${terrain.title}: ${name}`, terrainCode: code, surface, liquid:Boolean(liquid), image: `data:image/png;base64,${toTextureTile(raw).toString('base64')}` });
+      const raw = await imageRequest(`${brief} Create ONE seamless ${16*pixelScale} by ${16*pixelScale} native-pixel ${name} material texture for ${surface}. Opaque, ${surface==='wall'?'straight-on vertical wall face':'flat top-down'}, edge-to-edge, repeatable on all four sides. No objects or transparency. ${liquid ? 'Select only the liquid requested or implied by this terrain: grassland implies water, volcanic implies lava. Preserve its own palette.' : ''}`, references, { background: 'opaque' });
+      textures.push({ pixelScale,artStyle:CURRENT_ART_STYLE,id: id(), name: `${terrain.title}: ${name}`, terrainCode: code, surface, liquid:Boolean(liquid), image: `data:image/png;base64,${toTextureTile(raw,16*pixelScale).toString('base64')}` });
     });
   }
   function prop(name, kind, size, dimensions, footprint = [1,1]) {
     jobs.push(async () => {
-      const [width,height] = dimensions;
-      const bounds=interiorAssetBounds({assetKind:terrain.planItem?.kind,name:terrain.planItem?.name});
-      const scaleBrief=bounds?' Player height is 32 pixels. This object must fit '+bounds.width+' by '+bounds.height+' visible game pixels. Use a slightly elevated front view; small decor must look tabletop-sized, not human-sized.':'';
-      const prompt=`${brief}${scaleBrief} Draw ONE ${size || ''} ${name}. Separate native ${width} by ${height} logical-pixel artwork. ${kind==='Tree'?`VISIBLE TREE HEIGHT, not just canvas height, must be ${height/16} game tiles (${height} pixels at 16 pixels per tile), matching the default game trees. Use a tall 3:4 silhouette, canopy at the top and trunk base at the bottom, with minimal empty margins. Keep the canopy narrow enough to fit ${width}px width while the tree reaches ${height}px height. A large tree has more individually drawn foliage and branches than a medium tree, never the same small drawing centred in a larger blank image.`:''} Transparent background, bottom-centred base, no ground or cast shadow. Larger variants must contain additional individually drawn detail at the SAME pixel density, never enlarged pixels. Fill the canvas with a full silhouette, especially dense leafy bushes. ${kind ? 'The visual artwork may overhang its one-tile collision base.' : ''}`;
+      const [width,height] = dimensions.map(n=>n*pixelScale);
+      const logicalBounds=interiorAssetBounds({assetKind:terrain.planItem?.kind,name:terrain.planItem?.name});
+      const bounds=logicalBounds?{width:logicalBounds.width*pixelScale,height:logicalBounds.height*pixelScale}:null;
+      const scaleBrief=bounds?' Player height is '+(32*pixelScale)+' pixels. This object must fit '+bounds.width+' by '+bounds.height+' visible game pixels. Use a slightly elevated front view; small decor must look tabletop-sized, not human-sized.':'';
+      const prompt=`${brief}${scaleBrief} Draw ONE ${size || ''} ${name}. Separate native ${width} by ${height} logical-pixel artwork. ${kind==='Tree'?`VISIBLE TREE HEIGHT, not just canvas height, must be ${height/(16*pixelScale)} game tiles (${height} pixels at ${16*pixelScale} pixels per tile), matching the default game trees. Use a tall 3:4 silhouette, canopy at the top and trunk base at the bottom, with minimal empty margins. Keep the canopy narrow enough to fit ${width}px width while the tree reaches ${height}px height. A large tree has more individually drawn foliage and branches than a medium tree, never the same small drawing centred in a larger blank image.`:''} Transparent background, bottom-centred base, no ground or cast shadow. Larger variants must contain additional individually drawn detail at the SAME pixel density, never enlarged pixels. Fill the canvas with a full silhouette, especially dense leafy bushes. ${kind ? 'The visual artwork may overhang its one-tile collision base.' : ''}`;
       let sprite;
       for(let attempt=0;attempt<(kind==='Tree'?2:1);attempt++){
         const raw=await imageRequest(prompt+(attempt?' Correction: the previous tree silhouette was too short. Redraw it taller and narrower, filling the full requested height. Do not pad or enlarge the previous raster.':''),references);
-        try{sprite=kind==='Tree'?fitNativeTree(raw,size):fitSprite(raw,bounds?Math.min(width,bounds.width):width,bounds?Math.min(height,bounds.height):height,kind?{scale:1}:{});break;}
+        try{sprite=kind==='Tree'?fitNativeTree(raw,size,pixelScale):fitSprite(raw,bounds?Math.min(width,bounds.width):width,bounds?Math.min(height,bounds.height):height,kind?{scale:1}:{});break;}
         catch(error){if(!error.shortTree||attempt===1)throw error;}
       }
       if(bounds){const fitted=PNG.sync.read(sprite),padded=new PNG({width,height});PNG.bitblt(fitted,padded,0,0,fitted.width,fitted.height,Math.floor((width-fitted.width)/2),height-fitted.height);sprite=PNG.sync.write(padded);}
-      assets.push({ id:id(), name:kind ? `${kind} (${size})` : name, width:footprint[0], height:footprint[1], solid:kind !== 'Flowers', ...(kind ? { environmentKind:kind, sizeVariant:size } : {}), spriteUrl:`data:image/png;base64,${sprite.toString('base64')}` });
+      assets.push({ pixelScale,artStyle:CURRENT_ART_STYLE,id:id(), name:kind ? `${kind} (${size})` : name, width:footprint[0], height:footprint[1], solid:kind !== 'Flowers', ...(kind ? { environmentKind:kind, sizeVariant:size } : {}), spriteUrl:`data:image/png;base64,${sprite.toString('base64')}` });
     });
   }
   if(terrain.planItem){
@@ -84,9 +88,19 @@ export function mountTerrainBuilder(app, { auth, terrains, generating, deleteAss
     if(generating.has(key))return res.status(409).json({error:'Wait for the current terrain operation to finish.'});
     generating.add(key);
     try{const terrain=await terrains.findOne(owner);if(!terrain)return res.status(404).json({error:'Terrain not found.'});await action(req,res,terrain,owner);}
-    catch(error){res.status(502).json({error:error.mapStatus?error.message:'Terrain planning or generation failed. Saved items are retained; try again.'});}
+    catch(error){
+      console.error('Terrain operation failed:',error.message);
+      const message=error.mapStatus||error.shortTree?error.message:error.message==='OPENROUTER_API_KEY is not configured'?'Configure OPENROUTER_API_KEY in the server environment.':npcGenerationError(error).replaceAll('NPC','Terrain asset');
+      res.status(error.mapStatus??([402,429].includes(error.imageStatus)?error.imageStatus:502)).json({error:message+' Saved items are retained.'});
+    }
     finally{generating.delete(key);}
   };
+  app.post('/api/terrains/:id/regenerate',auth,planRoute(async(req,res,terrain)=>{
+    const row={_id:new ObjectId(),userId:req.user._id,title:terrain.title,description:terrain.description,kind:terrain.kind??'exterior',pixelScale:3,artStyle:CURRENT_ART_STYLE,...(terrain.referenceImage?{referenceImage:terrain.referenceImage}:{}),generatedAssets:[],textures:[],completed:[],planCompleted:[],createdAt:new Date(),updatedAt:new Date()};
+    row.assetPlan=await proposePlan(row);
+    await terrains.insertOne(row);
+    res.status(201).json({terrain:publicTerrain(row)});
+  }));
   app.post('/api/terrains/:id/plan',auth,planRoute(async(req,res,terrain,owner)=>{
     if(terrain.generatedAssets?.length||terrain.textures?.length)return res.status(409).json({error:'Create a new terrain to use asset planning; existing artwork is preserved.'});
     const assetPlan=await proposePlan(terrain);await terrains.updateOne(owner,{$set:{assetPlan,planCompleted:[],updatedAt:new Date()}});res.json({terrain:publicTerrain(await terrains.findOne(owner))});
@@ -136,7 +150,7 @@ export function mountTerrainBuilder(app, { auth, terrains, generating, deleteAss
   app.post('/api/terrains',auth,async(req,res,next)=>{
     const input=terrainInput(req.body);if(!input)return res.status(400).json({error:'Enter a title (80 characters) and description (2,000 characters).'});
     try {
-      const row={...input,userId:req.user._id,generatedAssets:[],textures:[],completed:[],createdAt:new Date(),updatedAt:new Date()};
+      const row={...input,pixelScale:3,artStyle:CURRENT_ART_STYLE,userId:req.user._id,generatedAssets:[],textures:[],completed:[],createdAt:new Date(),updatedAt:new Date()};
       row._id=(await terrains.insertOne(row)).insertedId;res.status(201).json({terrain:publicTerrain(row)});
     } catch(error){next(error);}
   });

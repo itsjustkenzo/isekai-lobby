@@ -6,8 +6,8 @@ import {publicMapError} from './map-analysis-errors.js';
 export function mountInteriorPrototype(app,{auth,terrains,generating,generate=generateMapFromTerrain}){
   app.post('/api/terrains/:id/interior-prototype',auth,async(req,res)=>{
     if(!/^[a-f0-9]{24}$/i.test(req.params.id))return res.status(400).json({error:'Invalid interior collection.'});
-    const size=req.body?.size??'medium';
-    if(typeof size!=='string'||!Object.hasOwn(INTERIOR_MAP_SIZES,size))return res.status(400).json({error:'Choose small, medium or large.'});
+    const size=req.body?.size??'auto';
+    if(typeof size!=='string'||size!=='auto'&&!Object.hasOwn(INTERIOR_MAP_SIZES,size))return res.status(400).json({error:'Choose small, medium or large.'});
     const key=`terrain:${req.user._id}`;
     if(generating.has(key))return res.status(409).json({error:'Wait for the current collection operation to finish.'});
     generating.add(key);

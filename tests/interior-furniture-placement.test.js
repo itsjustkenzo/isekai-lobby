@@ -19,7 +19,7 @@ test('interior layout accepts saved furniture and indoor prop categories',()=>{
 
 test('generated interior places exact saved furnishings and retains them through save/load',async()=>{
   const image=(w,h)=>{const p=new PNG({width:w,height:h});p.data.fill(100);for(let i=3;i<p.data.length;i+=4)p.data[i]=255;return `data:image/png;base64,${PNG.sync.write(p).toString('base64')}`;};
-  const assets=[['Oak table','Furniture',2],['Wardrobe','Furniture',2],['Candle','Indoor prop',1]].map(([name,assetKind,width])=>({id:new ObjectId().toString(),name,assetKind,width,height:1,solid:true,spriteUrl:image(width*16,32)}));
+  const assets=[['Oak table','Furniture',2],['Wardrobe','Furniture',2],['Oak chair','Furniture',1]].map(([name,assetKind,width])=>({id:new ObjectId().toString(),name,assetKind,width,height:1,solid:true,spriteUrl:image(width*16,32)}));
   const textures=[['floor','o'],['wall','wall']].map(([surface,terrainCode])=>({id:new ObjectId().toString(),name:surface,surface,terrainCode,image:image(16,16)}));
   const collection={_id:new ObjectId(),kind:'interior',title:'Tavern',generatedAssets:assets,textures};
   const map=await generateMapFromTerrain(Buffer.from('reference'),1024,1024,'Tavern','','interior',collection,async(reference,size,kind,description)=>{

@@ -22,7 +22,7 @@ Each group has type, zone, primaryAssetId, secondaryAssetId, accentAssetId and c
 - sleeping: primary is a bed; secondary may be a bedside table. Choose a suitable wall-side zone.
 - wall_storage: primary is a cupboard, shelf or cabinet. Prefer the north, west or east zone.
 - focal: primary is an altar, counter, shrine or other focal furnishing. Church altars belong to the north zone.
-- corner_accent: primary is a saved flower pot, lamp or decoration; prefer corners.
+- corner_accent: reserved for compatible major furniture; small decorations are disabled.
 Zones are north, west, east, centre, south or corners. Select fewer groups for smaller interiors. A small room usually needs one main group plus modest storage and decoration. Churches may use repeated seating groups. Caves and empty halls must not receive unrelated domestic furnishings.
 Do not duplicate grouped assets in placements or mark them as bed/table/chair grid symbols. Use placements only for unique ungrouped landmarks and finishing touches. Empty groups are appropriate when the saved inventory has no functional furnishings.
 This replaces scattered individual furniture coordinates. Never fill all available space just to use every asset.
@@ -32,4 +32,13 @@ This replaces scattered individual furniture coordinates. Never fill all availab
 
 For image references, each furnishing group must include x and y: the preferred bottom-left anchor in the FULL map grid, based on its position in the picture. Preserve furniture clusters, room proportions, asymmetry and intentional empty space. Zones are preferences, not a replacement template. Adjust reference anchors locally for overlap or walking access; omit a group that cannot fit near its original position rather than relocating it across the room.
 For description-only prototypes, choose suitable x and y anchors yourself.
-Use accentAssetId for a saved tabletop-sized lamp, candle, book, plate or vase to sit on the group's table, desk or bedside surface. Large floor lamps and floor-standing pots remain independent placements. Only use compatible saved artwork. Never invent an asset for a missing detail.
+Set accentAssetId to an empty string. This generation version omits small decorations; use only compatible major furniture.
+
+
+## Mandatory assembly-only furnishing
+
+Major furniture MUST be requested as furnishingGroups. Do not scatter major furniture through placements or grid symbols. For every visible table area request a dining group with a compatible table and seating asset; use separate groups/anchors for separate reference tables. Use service_counter for a counter along a wall with stools in front, sleeping for bed-and-bedside assemblies, wall_storage for cupboards/shelves/large notice boards, and seating_rows for church seating.
+Use count=1 for unique furniture and exact individual reference anchors. For repeated dining or sleeping sets occupying a broad zone, count=2..6 requests that many COMPLETE assemblies distributed throughout that zone; x/y describe the zone's representative anchor, not a constraint that every copy cluster around it. Only seating_rows interprets count as its row count. Use separate west and east repeated dining groups in busy taverns/guild halls so both the upper AND lower usable floor are furnished, with a connected entrance route between them. Code checks every assembly for fit and walking access.
+
+Plan furniture quantities against the FULL usable room dimensions and the saved footprints, not just the top of the picture. A furnished 20x20 tavern with small 2x1 tables typically needs 6-8 dining sets spread over multiple rows, plus suitable wall storage and a service counter when available. A 16x16 room generally fits fewer. These are composition guides, not mandatory minimums: preserve intentionally open stages, church aisles, cave floors and genuinely sparse references. Cover the occupied zones with balanced repeated sets rather than leaving half of a busy hall accidentally unused. Never enlarge furniture to fill the room, invent unavailable furniture, or distribute loose seats and small clutter into gaps.
+This version includes MAJOR FURNITURE ONLY. Set accentAssetId="" and omit mugs, plates, papers, books, buckets, flower pots, lamps, lanterns and chandeliers. Do not populate the placements array with finishing decorations. The local assembly solver computes furniture-member positions and checks walking access.

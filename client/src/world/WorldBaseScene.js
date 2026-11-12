@@ -1,3 +1,4 @@
+import {CHARACTER_TEXTURE_HEIGHT} from '../gameArtStyle.js';
 import {drawInteriorLightingTile} from './interiorLighting.js';
 import {drawInteriorBorderTile} from './interiorBorder.js';
 import {interiorSpriteLayout} from '../interiorAssetScale.js';
@@ -70,7 +71,7 @@ export class WorldBaseScene extends Phaser.Scene {
     if (this.textures.exists(key)) return key;
     if (!this.textures.exists(`asset-${asset.id}`)) return null;
     const source = this.textures.get(`asset-${asset.id}`).getSourceImage();
-    const footprintHeight=asset.height*TILE;
+    const footprintHeight=asset.height*TILE*(asset.pixelScale===3?3:1);
     const canvas=document.createElement('canvas');canvas.width=footprintHeight;canvas.height=source.width;
     const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.translate(footprintHeight,0);ctx.rotate(Math.PI/2);
     ctx.drawImage(source,0,source.height-footprintHeight,source.width,footprintHeight,0,0,source.width,footprintHeight);
@@ -94,11 +95,12 @@ export class WorldBaseScene extends Phaser.Scene {
       const bottom = (p.y + 1) * TILE;
       const { width } = assetDims(asset, turn);
       const image = this.add.image(p.x * TILE + (width * TILE) / 2, bottom-(p.elevation??0), texture).setOrigin(0.5, 1).setDepth(bottom+(p.supportAssetId?0.1:0)).setFlipX(Boolean(p.f));
+      const pixelScale=asset.pixelScale===3?3:1;image.setScale(1/pixelScale);
       if(!turn&&['Furniture','Indoor prop'].includes(asset.assetKind)){
         const source=this.textures.get(texture).getSourceImage(),canvas=document.createElement('canvas');
         canvas.width=source.width;canvas.height=source.height;const ctx=canvas.getContext('2d');ctx.drawImage(source,0,0);
         const layout=interiorSpriteLayout(asset,ctx.getImageData(0,0,canvas.width,canvas.height).data,canvas.width,canvas.height);
-        if(layout){const t=this.textures.get(texture);if(!t.has('interior-scale'))t.add('interior-scale',0,layout.x,layout.y,layout.width,layout.height);image.setFrame('interior-scale').setDisplaySize(layout.displayWidth,layout.displayHeight);}
+        if(layout){const t=this.textures.get(texture);if(!t.has('interior-scale'))t.add('interior-scale',0,layout.x,layout.y,layout.width,layout.height);image.setFrame('interior-scale').setDisplaySize(layout.displayWidth/pixelScale,layout.displayHeight/pixelScale);}
       }
       this.assetImages.set(key, image);
     }
@@ -161,8 +163,9 @@ export class WorldBaseScene extends Phaser.Scene {
       sizes.forEach((canvas, size) => this.textures.addCanvas(`decor-${id}-${size}`, canvas));
     }
     for (const [id, canvas] of Object.entries(this.art.buildings)) this.textures.addCanvas(`building-${id}`, canvas);
-    this.ground = this.textures.createCanvas('ground', world.width * TILE, world.height * TILE);
-    this.add.image(0, 0, 'ground').setOrigin(0).setDepth(-1);
+    this.ground = this.textures.createCanvas('ground', world.width * TILE * 3, world.height * TILE * 3);
+    this.ground.getContext().scale(3,3);
+    this.add.image(0, 0, 'ground').setOrigin(0).setScale(1/3).setDepth(-1);
     this.waterFrame = 0;
     this.redrawAll();
     this.time.addEvent({ delay: WATER_FRAME_MS, loop: true, callback: () => this.animateWater() });
@@ -240,7 +243,7 @@ export class WorldBaseScene extends Phaser.Scene {
     if (this.textures.exists(key)) return key;
     if (!this.textures.exists(`npc-src-${id}`)) return null;
     const source=this.textures.get(`npc-src-${id}`).getSourceImage();
-    this.textures.addCanvas(key,pixelateSprite(source));
+    this.textures.addCanvas(key,pixelateSprite(source,{height:CHARACTER_TEXTURE_HEIGHT-2}));
     return key;
   }
 
@@ -262,6 +265,7 @@ export class WorldBaseScene extends Phaser.Scene {
       const x = p.x * TILE + TILE / 2;
       const shadow = this.add.image(x, feetY - 1, 'npc-shadow').setDepth(feetY + 0.4);
       const image = this.add.image(x, feetY + 1, texture).setOrigin(0.5, 1).setDepth(feetY + 0.5).setFlipX(Boolean(p.f));
+      image.setScale(PLAYER_SPRITE_HEIGHT/image.height);
       this.npcImages.set(key, { image, shadow, baseY: feetY + 1, phase: (p.x * 7 + p.y * 13) % 10 });
       this.overviewCache = null; // the mini map picture should include them
     }
@@ -320,7 +324,7 @@ export class WorldBaseScene extends Phaser.Scene {
     full.height = world.height * TILE;
     const ctx = full.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(this.ground.getSourceImage(), 0, 0);
+    ctx.drawImage(this.ground.getSourceImage(), 0, 0,world.width*TILE,world.height*TILE);
     const npcs = [...(this.npcImages?.values() ?? [])].flatMap((e) => [e.shadow, e.image]);
     const images = [...this.decor.values(), ...(this.assetImages?.values() ?? []), ...npcs].sort((a, b) => a.depth - b.depth);
     for (const image of images) {
@@ -353,7 +357,7 @@ export class WorldBaseScene extends Phaser.Scene {
     image.onload = () => {
       if (!this.sys.isActive()) return;
       if (!this.textures.exists('hero')) {
-        this.textures.addCanvas('hero',pixelateSprite(image,{height:PLAYER_SPRITE_HEIGHT-2}));
+        this.textures.addCanvas('hero',pixelateSprite(image,{height:CHARACTER_TEXTURE_HEIGHT-2}));
       }
       onReady();
     };
@@ -363,7 +367,7 @@ export class WorldBaseScene extends Phaser.Scene {
   // The hero image, anchored at the bottom-centre of its feet on a whole pixel so it stays on the tile pixel grid.
   addHero(x, y) {
     const hero = this.add.image(x, y, 'hero');
-    return hero.setDisplayOrigin(Math.floor(hero.width / 2), hero.height);
+    return hero.setDisplayOrigin(Math.floor(hero.width / 2), hero.height).setScale(PLAYER_SPRITE_HEIGHT/hero.height);
   }
 
   // With camera origin (0, 0): screen = (world - scroll) * zoom. Scroll is snapped so that is always a whole pixel.

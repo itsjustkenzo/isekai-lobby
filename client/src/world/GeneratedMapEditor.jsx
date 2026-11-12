@@ -9,7 +9,7 @@ import {setAssets,libraryAssets,assetTool,setAssetOrientation} from './world.js'
 import DreamMapDesigner from './DreamMapDesigner.jsx';
 import PlayView from './PlayView.jsx';
 
-export default function GeneratedMapEditor({user,onBack,initialMap}) {
+export default function GeneratedMapEditor({user,onBack,initialMap,mapKind='exterior'}) {
   const hostRef=useRef(null),sceneRef=useRef(null),mapRef=useRef(null),toolRef=useRef('g'),brushRef=useRef(1),strokeRef=useRef(null),versionRef=useRef(0);
   const undoRef=useRef([]),redoRef=useRef([]),mapIdRef=useRef(null),openSequenceRef=useRef(0);
   const [maps,setMaps]=useState([]);
@@ -30,8 +30,8 @@ export default function GeneratedMapEditor({user,onBack,initialMap}) {
     api('/api/generated-map').then(({ok,data})=>{
       if(cancelled)return;
       if(!ok)throw new Error(data.error||'Could not load your prototype.');
-      setMaps(data.maps||[]);
-      if(initialMap)acceptGenerated(initialMap);else if(data.maps?.length)awaitOpen(data.maps[0].id);else setDesigner(true);
+      setMaps((data.maps||[]).filter(m=>(m.kind==='indoor')===(mapKind==='interior')));
+      if(initialMap)acceptGenerated(initialMap);else setDesigner(true);
     }).catch((error)=>{if(!cancelled)setNotice(error.message);}).finally(()=>{if(!cancelled)setLoaded(true);});
     return()=>{cancelled=true;openSequenceRef.current++;setAssets(previousAssets);setPaintTextures(previousTextures);};
   },[]);
@@ -84,12 +84,12 @@ export default function GeneratedMapEditor({user,onBack,initialMap}) {
   }
   const map=mapRef.current,tools=map?.interior?FLOOR_TOOLS:[...TERRAIN_TOOLS,...DECOR_TOOLS];
   return <section className="editor generated-map-editor" aria-label="Generated map prototype editor">
-    <div className="editor-head"><button type="button" className="back-button" onClick={()=>{if(!dirty||window.confirm('Leave this prototype without saving changes?'))onBack();}}>Back</button><h2>Generated Map Editor <span className="preview-badge">Prototype</span></h2><div className="generated-editor-actions"><button type="button" className="design-button" disabled={!map||saving} onClick={()=>setPreview(true)}>Preview</button><button type="button" className="design-button" disabled={!map||saving} onClick={save}>{saving?'Saving...':'Save prototype'}</button></div></div>
+    <div className="editor-head"><button type="button" className="back-button" onClick={()=>{if(!dirty||window.confirm('Leave this prototype without saving changes?'))onBack();}}>Back</button><h2>{mapKind==='interior'?'Interior':'Exterior'} Map Editor <span className="preview-badge">Prototype</span></h2><div className="generated-editor-actions"><button type="button" className="design-button" disabled={!map||saving} onClick={()=>setPreview(true)}>Preview</button><button type="button" className="design-button" disabled={!map||saving} onClick={save}>{saving?'Saving...':'Save prototype'}</button></div></div>
     <div className="generated-editor-scope">Separate workspace and save. Your regular Create world and player progress are not changed.</div>
     {furnishingSummary&&<p className="generated-editor-scope" role="status">Furnishing groups: {furnishingSummary.completed} / {furnishingSummary.requested} arranged. {furnishingSummary.omitted>0?`${furnishingSummary.omitted} omitted because they could not fit safely.`:'Entrance and walking access checked.'}</p>}
     <div className="editor-body"><aside className="toolbar"><div className="side-panel">
       <div className="tool-group"><h3>Image-generated map</h3><button type="button" className="design-button" disabled={saving} onClick={()=>{if(!dirty||window.confirm('Generate another map? Current unsaved prototype changes will be replaced when you accept the new result.'))setDesigner(true);}}>Generate from image</button><p className="hint">Each map opened from the generator is saved separately. Save prototype updates the map you are editing.</p></div>
-      <div className="tool-group"><h3>Generated maps ({maps.length})</h3><div className="generated-map-list">{maps.map((entry)=><div className="generated-map-entry" key={entry.id}><button type="button" className={`design-button secondary${mapIdRef.current===entry.id?' active':''}`} disabled={saving} aria-pressed={mapIdRef.current===entry.id} onClick={()=>{if(entry.id!==mapIdRef.current&&(!dirty||window.confirm('Open another map without saving current changes?')))awaitOpen(entry.id);}}><strong>{entry.name||'Untitled map'}</strong><span>{entry.kind==='indoor'?'Interior':'Exterior'} ? {entry.width} ? {entry.height}</span></button><button type="button" className="design-button generated-map-delete" disabled={saving} aria-label={`Delete ${entry.name||'Untitled map'}`} onClick={()=>deleteMap(entry)}>Delete map</button></div>)}{!maps.length&&<p className="hint">Your generated maps will appear here after saving.</p>}</div></div>
+      <div className="tool-group"><h3>{mapKind==='interior'?'Interior':'Exterior'} maps ({maps.length})</h3><div className="generated-map-list">{maps.map((entry)=><div className="generated-map-entry" key={entry.id}><button type="button" className={`design-button secondary${mapIdRef.current===entry.id?' active':''}`} disabled={saving} aria-pressed={mapIdRef.current===entry.id} onClick={()=>{if(entry.id!==mapIdRef.current&&(!dirty||window.confirm('Open another map without saving current changes?')))awaitOpen(entry.id);}}><strong>{entry.name||'Untitled map'}</strong><span>{entry.kind==='indoor'?'Interior':'Exterior'} ? {entry.width} ? {entry.height}</span></button><button type="button" className="design-button generated-map-delete" disabled={saving} aria-label={`Delete ${entry.name||'Untitled map'}`} onClick={()=>deleteMap(entry)}>Delete map</button></div>)}{!maps.length&&<p className="hint">Your generated maps will appear here after saving.</p>}</div></div>
       {map&&<>
         <label className="entrance-name">Map name<input maxLength={40} value={map.name??''} onChange={(event)=>{map.name=event.target.value;changed();}}/></label>
         <p className="hint">{map.interior?'Interior':'Exterior'} - {map.width} ? {map.height} tiles</p>
@@ -101,7 +101,7 @@ export default function GeneratedMapEditor({user,onBack,initialMap}) {
       </>}
       <p className="hint" role="status">{notice||(dirty?'Unsaved prototype changes':'')}</p>
     </div></aside><div className="stage"><div className="stage-canvas" ref={hostRef}/>{!map&&<p className="stage-message">{loaded?'Upload an image to generate a prototype map.':'Loading prototype...'}</p>}<p className="stage-hint">Drag to paint | Scroll to zoom | Right-drag to pan</p></div></div>
-    {designer&&<DreamMapDesigner onClose={()=>setDesigner(false)} onCreate={acceptGenerated}/>}
+    {designer&&<DreamMapDesigner mapKind={mapKind} onClose={()=>setDesigner(false)} onCreate={acceptGenerated}/>}
     {preview&&map&&<div className="preview-overlay"><PlayView user={user} preview={{world:map,map:'main',inside:null}} onBack={()=>setPreview(false)}/></div>}
   </section>;
 }

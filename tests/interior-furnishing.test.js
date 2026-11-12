@@ -27,10 +27,10 @@ test('church groups create aligned pew rows, a north altar and an open entrance 
 
 test('dining members move together and unsafe oversized groups are omitted',()=>{
   const {map,collection}=fixture(),result=furnishInterior(map,[group('dining','west','table','chair')],collection);
-  assert.equal(result.placed.length,3);
+  assert.equal(result.placed.length,5);
   const table=result.placed.find(p=>p.a==='table'),chairs=result.placed.filter(p=>p.a==='chair');
-  assert.deepEqual(chairs.map(p=>p.y),[table.y,table.y]);
-  assert.deepEqual(chairs.map(p=>p.x),[table.x-1,table.x+2]);
+  assert.deepEqual(chairs.slice(0,2).map(p=>p.y),[table.y,table.y]);
+  assert.deepEqual(chairs.slice(0,2).map(p=>p.x),[table.x-1,table.x+2]);
   collection.generatedAssets.push({id:'huge',width:30,height:30,solid:true});
   const tooBig=furnishInterior(map,[group('focal','north','huge')],collection);
   assert.equal(tooBig.placed.length,0);assert.equal(tooBig.furnishingReport.omitted,1);

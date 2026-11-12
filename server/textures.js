@@ -3,24 +3,24 @@ import { REFERENCE_ART_STYLE } from './reference-style.js';
 import { PNG } from 'pngjs';
 import { requestImage } from './sprite.js';
 
-// Full-bleed materials are resampled to the game's 16-pixel tile grid.
-export function toTextureTile(buffer) {
+// New collections use 48px material tiles; legacy callers retain the 16px default.
+export function toTextureTile(buffer, size=16) {
   const source = PNG.sync.read(buffer, { checkCRC: true });
   if (source.width > 4096 || source.height > 4096) throw new Error('Texture image is too large');
-  const tile = new PNG({ width: 16, height: 16 });
-  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-    const sx = Math.min(source.width - 1, Math.floor((x + 0.5) * source.width / 16));
-    const sy = Math.min(source.height - 1, Math.floor((y + 0.5) * source.height / 16));
+  const tile = new PNG({ width: size, height: size });
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    const sx = Math.min(source.width - 1, Math.floor((x + 0.5) * source.width / size));
+    const sy = Math.min(source.height - 1, Math.floor((y + 0.5) * source.height / size));
     const i = (sy * source.width + sx) * 4;
-    const j = (y * 16 + x) * 4;
+    const j = (y * size + x) * 4;
     const alpha = source.data[i + 3] / 255;
     for (let c = 0; c < 3; c++) tile.data[j + c] = Math.round(source.data[i + c] * alpha + 100 * (1 - alpha));
     tile.data[j + 3] = 255;
   }
   // Match opposite edges so repeated tiles don't have a hard boundary.
   const match = (a, b) => { for (let c = 0; c < 3; c++) tile.data[a + c] = tile.data[b + c] = Math.round((tile.data[a + c] + tile.data[b + c]) / 2); };
-  for (let y = 0; y < 16; y++) match(y * 64, y * 64 + 60);
-  for (let x = 0; x < 16; x++) match(x * 4, 15 * 64 + x * 4);
+  for (let y = 0; y < size; y++) match(y * size*4, (y * size+size-1)*4);
+  for (let x = 0; x < size; x++) match(x * 4, ((size-1)*size+x)*4);
   return PNG.sync.write(tile);
 }
 
@@ -34,17 +34,19 @@ export function validTextureLibrary(textures) {
   if (!Array.isArray(textures) || textures.length > 64) return false;
   const ids = new Set();
   return textures.every((t) => {
-    if (!t || typeof t.id !== 'string' || !/^[a-f0-9]{24}$/.test(t.id) || ids.has(t.id) || typeof t.name !== 'string' || t.name.length > 300 || typeof t.image !== 'string' || t.image.length >= 4096 || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(t.image)) return false;
+    if (!t || typeof t.id !== 'string' || !/^[a-f0-9]{24}$/.test(t.id) || ids.has(t.id) || typeof t.name !== 'string' || t.name.length > 300 || typeof t.image !== 'string' || t.image.length >= (t.pixelScale===3?100000:4096) || !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(t.image)) return false;
     if (t.liquid !== undefined && typeof t.liquid !== 'boolean') return false;
     if (t.surface !== undefined && !['wall', 'floor', 'ground'].includes(t.surface)) return false;
     if (t.description !== undefined && (typeof t.description !== 'string' || t.description.length > 800)) return false;
     if(t.originalArtwork&&!validOriginalArtwork(t.originalArtwork,16,16))return false;
+    if(t.pixelScale!==undefined&&![1,3].includes(t.pixelScale))return false;
+    const size=t.pixelScale===3?48:16;
     ids.add(t.id);
     try {
       const buffer = Buffer.from(t.image.split(',')[1], 'base64');
-      if (buffer.length < 24 || buffer.readUInt32BE(16) !== 16 || buffer.readUInt32BE(20) !== 16) return false;
+      if (buffer.length < 24 || buffer.readUInt32BE(16) !== size || buffer.readUInt32BE(20) !== size) return false;
       const tile = PNG.sync.read(buffer);
-      return tile.width === 16 && tile.height === 16;
+      return tile.width === size && tile.height === size;
     } catch { return false; }
   });
 }

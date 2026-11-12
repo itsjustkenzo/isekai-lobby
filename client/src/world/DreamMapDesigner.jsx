@@ -1,15 +1,13 @@
 import {drawInteriorLightingTile} from './interiorLighting.js';
 import {drawInteriorBorderTile} from './interiorBorder.js';
 import {interiorSpriteLayout} from '../interiorAssetScale.js';
-import {INTERIOR_MAP_SIZES} from '../interiorMapSizes.js';
 import React,{useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {api} from '../api.js';
 import AssetImageUpload from './AssetImageUpload.jsx';
 import {drawGroundTransitions} from './groundTransitions.js';
 
-export default function DreamMapDesigner({onCreate,onClose}) {
-  const [interiorSize,setInteriorSize]=useState('medium');
+export default function DreamMapDesigner({onCreate,onClose,mapKind='exterior'}) {
   const [name,setName]=useState(''),[image,setImage]=useState(null),[preview,setPreview]=useState(''),[dimensions,setDimensions]=useState(null),[selection,setSelection]=useState(null);
   const [busy,setBusy]=useState(false),[processing,setProcessing]=useState(false),[result,setResult]=useState(null),[notice,setNotice]=useState('');
   const canvasRef=useRef(null),dialogRef=useRef(null),pending=useRef(false),fileSequence=useRef(0);
@@ -29,8 +27,8 @@ export default function DreamMapDesigner({onCreate,onClose}) {
   useEffect(()=>{
     if(!result||!canvasRef.current)return;
     let cancelled=false;
-    const canvas=canvasRef.current;canvas.width=result.width*16;canvas.height=result.height*16;
-    const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
+    const canvas=canvasRef.current;canvas.width=result.width*48;canvas.height=result.height*48;
+    const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.scale(3,3);
     const colors={o:'#aa7343',c:'#ae4f71',g:'#6cad4b',d:'#aa7343',w:'#377dc4',s:'#979ba3',a:'#e4ca89'};
     function load(url){return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Could not load map artwork preview.'));image.src=url;});}
     for(let i=0;i<result.terrain.length;i++){ctx.fillStyle=colors[result.terrain[i]];ctx.fillRect(i%result.width*16,Math.floor(i/result.width)*16,16,16);}
@@ -46,8 +44,9 @@ export default function DreamMapDesigner({onCreate,onClose}) {
         const temp=document.createElement('canvas');temp.width=image.width;temp.height=image.height;
         const pixels=temp.getContext('2d');pixels.drawImage(image,0,0);
         const layout=interiorSpriteLayout(asset,pixels.getImageData(0,0,image.width,image.height).data,image.width,image.height);
-        if(layout)ctx.drawImage(image,layout.x,layout.y,layout.width,layout.height,p.x*16+asset.width*8-layout.displayWidth/2,(p.y+1)*16-(p.elevation??0)-layout.displayHeight,layout.displayWidth,layout.displayHeight);
-        else ctx.drawImage(image,p.x*16+(asset.width*16-image.width)/2,(p.y+1)*16-(p.elevation??0)-image.height);
+        const pixelScale=asset.pixelScale===3?3:1;
+        if(layout)ctx.drawImage(image,layout.x,layout.y,layout.width,layout.height,p.x*16+asset.width*8-layout.displayWidth/pixelScale/2,(p.y+1)*16-(p.elevation??0)-layout.displayHeight/pixelScale,layout.displayWidth/pixelScale,layout.displayHeight/pixelScale);
+        else ctx.drawImage(image,p.x*16+(asset.width*16-image.width/pixelScale)/2,(p.y+1)*16-(p.elevation??0)-image.height/pixelScale,image.width/pixelScale,image.height/pixelScale);
       }
       ctx.fillStyle='#ffdf36';ctx.fillRect(result.spawn.x*16+5,result.spawn.y*16+5,6,6);
     }).catch(error=>{if(!cancelled)setNotice(error.message);});
@@ -76,7 +75,7 @@ export default function DreamMapDesigner({onCreate,onClose}) {
     event.preventDefault();if(!image||!dimensions||!name.trim()||pending.current)return;
     pending.current=true;setBusy(true);setNotice('');
     try{
-      const query=new URLSearchParams({name:name.trim(),width:String(dimensions.width),height:String(dimensions.height),interiorSize});
+      const query=new URLSearchParams({name:name.trim(),width:String(dimensions.width),height:String(dimensions.height),interiorSize:'auto',kind:mapKind});
       const {ok,data}=await api(`/api/maps/dream?${query}`,{method:'POST',headers:{'Content-Type':'image/png'},body:image});
       if(!ok)throw new Error(data.error||'Map generation failed.');setResult(data.map);setSelection(data.selection);
     }catch(error){setNotice(error.message||'Could not reach the server.');}
@@ -84,13 +83,13 @@ export default function DreamMapDesigner({onCreate,onClose}) {
   }
   return createPortal(<div className="modal-backdrop" onClick={()=>!pending.current&&onClose()}>
     <div className="modal dream-map-designer" ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="dream-map-title" onClick={(event)=>event.stopPropagation()}>
-      <div className="modal-head"><h2 id="dream-map-title">Generate your map</h2><button type="button" className="text-button" disabled={busy} onClick={onClose}>Close</button></div>
-      <p className="designer-intro">Name your map and upload a picture. AI identifies the setting, chooses the best matching terrain from your Assets Builder collections, and arranges its saved artwork into an editable map.</p>
+      <div className="modal-head"><h2 id="dream-map-title">{mapKind==='interior'?'Generate Interior Map':'Generate Exterior Map'}</h2><button type="button" className="text-button" disabled={busy} onClick={onClose}>Close</button></div>
+      <p className="designer-intro">Name your map and upload a picture. {mapKind==='interior'?'AI uses a matching Interior Asset Builder collection to arrange an enclosed space with its saved floors, walls and furnishings.':'AI uses a matching outdoor Assets Builder collection to arrange the landscape, terrain and environmental props.'}</p>
       <form className="login-form" onSubmit={generate}>
         <label>Map name<input required maxLength={40} value={name} disabled={busy} onChange={(event)=>setName(event.target.value)}/></label>
-        <label>Interior map size<select disabled={busy} value={interiorSize} onChange={e=>setInteriorSize(e.target.value)}>{Object.entries(INTERIOR_MAP_SIZES).map(([key,size])=><option key={key} value={key}>{key[0].toUpperCase()+key.slice(1)} ? {size.width} ? {size.height} tiles</option>)}</select></label><p className="hint">Used when the image is identified as an interior. Exterior map sizing stays automatic.</p>
+        {mapKind==='interior'&&<p className="hint">AI chooses the interior size automatically: 16 ? 16, 16 ? 18 or 20 ? 20 tiles, based on the picture and furnishing needs.</p>}
         <AssetImageUpload label="Your map image" image={preview} required disabled={busy||processing} onChange={upload}/>
-        <p className="hint">The image controls terrain regions and prop positions. Saved terrain artwork supplies the materials and objects. Missing prop types are omitted. Liquids block movement. Your regular worlds and player progress stay separate.</p>
+        <p className="hint">The image controls terrain regions and prop positions. Saved terrain artwork supplies the materials and objects in its generated style. For the current detailed fantasy look, use newly generated collections; existing artwork is not automatically restyled. Missing prop types are omitted. Liquids block movement. Your regular worlds and player progress stay separate.</p>
         <button type="submit" className="design-button" disabled={busy||processing||!image||!name.trim()}>{busy?'Assembling map from saved assets...':result?'Regenerate map':'Generate dream map'}</button>
         {busy&&<p className="hint" role="status"><span className="terrain-map-spinner" aria-hidden="true"/> AI is identifying the terrain and indoor/outdoor setting, then arranging the best matching saved assets. This uses layout-analysis credits and can take a few minutes.</p>}
         {notice&&<p className="notice" role="alert">{notice}</p>}

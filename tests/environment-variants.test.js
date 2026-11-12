@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PNG} from 'pngjs';
-import {environmentVariants,environmentVariantIndex,normalizeEnvironmentFootprints,treeSprite} from '../server/environment-variants.js';
+import {environmentVariants,environmentVariantIndex,normalizeEnvironmentFootprints,treeSprite,restoreShrunkNatureSprites} from '../server/environment-variants.js';
 function sprite(){const png=new PNG({width:32,height:48});for(let y=0;y<48;y++)for(let x=0;x<32;x++)png.data.set([31,100,50,255],(y*32+x)*4);return PNG.sync.write(png);}
 test('environment sizes preserve pixel colours, bottom anchoring and collision footprint',()=>{
  const variants=environmentVariants(sprite(),{id:'old',name:'Tree',width:2,height:2,solid:true});
@@ -27,4 +27,28 @@ test('tree conversion never magnifies existing source pixels to achieve a taller
  const source=new PNG({width:8,height:8});for(let y=0;y<8;y++)for(let x=0;x<8;x++)source.data.set([x*20,y*20,30,255],(y*8+x)*4);
  const result=treeSprite(source,'large');assert.equal(result.height,64);assert.equal(result.width,8);
  for(let y=0;y<8;y++)for(let x=0;x<8;x++)assert.deepEqual([...result.data.subarray(((56+y)*8+x)*4,((56+y)*8+x)*4+4)],[x*20,y*20,30,255]);
+});
+
+test('high-resolution tree migration preserves exact artwork and placement counts across repeated reloads',()=>{
+  const assets=['small','medium','large'].map((size,n)=>{
+    const height=[96,144,192][n],png=new PNG({width:height*3/4,height});
+    for(let i=0;i<png.data.length;i+=4)png.data.set([30,100,50,255],i);
+    return {id:'tree-'+size,name:'Oak ('+size+')',environmentKind:'Tree',sizeVariant:size,width:1,height:1,pixelScale:3,spriteUrl:'data:image/png;base64,'+PNG.sync.write(png).toString('base64')};
+  });
+  const map={generatedAssets:assets,placed:assets.map((a,i)=>({a:a.id,x:3+i*3,y:7}))};
+  let loaded=structuredClone(map);
+  for(let n=0;n<3;n++)loaded=normalizeEnvironmentFootprints(JSON.parse(JSON.stringify(loaded)));
+  assert.deepEqual(loaded,map);
+});
+
+test('known shrunken trees recover from exact source IDs, without replacing intact art or deleted definitions',()=>{
+  const png=new PNG({width:72,height:96});png.data.fill(255);
+  const original={id:'oak',name:'Oak',environmentKind:'Tree',sizeVariant:'small',width:1,height:1,pixelScale:3,spriteUrl:'data:image/png;base64,'+PNG.sync.write(png).toString('base64')};
+  const damaged={...original,spriteUrl:'data:image/png;base64,'+sprite().toString('base64')};
+  const map={generatedAssets:[damaged],placed:[{a:'oak',x:4,y:6}]};
+  const restored=restoreShrunkNatureSprites(map,{generatedAssets:[original]});
+  assert.equal(restored.generatedAssets[0].spriteUrl,original.spriteUrl);
+  assert.deepEqual(restored.placed,map.placed);
+  assert.equal(restoreShrunkNatureSprites(map,{generatedAssets:[]}).generatedAssets[0].spriteUrl,damaged.spriteUrl);
+  assert.equal(restoreShrunkNatureSprites(restored,{generatedAssets:[original]}).generatedAssets[0].spriteUrl,original.spriteUrl);
 });

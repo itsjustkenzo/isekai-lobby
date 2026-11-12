@@ -143,7 +143,7 @@ function CharacterCreator({ user, onUpdate, onSaved, onCancel }) {
   </>);
 }
 
-function CharacterCard({ user, onPlay, onCreateWorld, onGenerateMap, onAssetsBuilder, onDetailedStyle, onInteriorAssetsBuilder, onNpcAssetsBuilder, onBuildingAssetsBuilder, onRecreate, onLogout }) {
+function CharacterCard({ user, onPlay, onCreateWorld, onGenerateExteriorMap, onGenerateInteriorMap, onAssetsBuilder, onDetailedStyle, onInteriorAssetsBuilder, onNpcAssetsBuilder, onBuildingAssetsBuilder, onRecreate, onLogout }) {
   return (<>
     <h2>Welcome, {user.username}!</h2>
     <p>Your hero is ready. What's next?</p>
@@ -152,7 +152,8 @@ function CharacterCard({ user, onPlay, onCreateWorld, onGenerateMap, onAssetsBui
       <button className="choice" onClick={onPlay}><strong>▶ Play</strong><small>Explore your world</small></button>
       <button className="choice" onClick={onCreateWorld}><strong>✦ Create</strong><small>Build your own world</small></button>
     </div>
-    <button type="button" className="choice portal-generate-map" onClick={onGenerateMap}><strong>Generate your map</strong><small>Prototype: upload an interior or exterior reference image</small></button>
+    <button type="button" className="choice portal-generate-map" onClick={onGenerateExteriorMap}><strong>Generate Exterior Map</strong><small>Upload a landscape or outdoor reference image</small></button>
+    <button type="button" className="choice portal-generate-map" onClick={onGenerateInteriorMap}><strong>Generate Interior Map</strong><small>Upload an interior reference image</small></button>
     <button type="button" className="choice portal-generate-map" onClick={onAssetsBuilder}><strong>Assets Builder</strong><small>Create terrain collections and reusable game assets</small></button>
     <button type="button" className="choice portal-generate-map" onClick={onBuildingAssetsBuilder}><strong>Building Assets Builder</strong><small>Create reusable pixel-art buildings</small></button>
     <button type="button" className="choice portal-generate-map" onClick={onInteriorAssetsBuilder}><strong>Interior Asset Builder</strong><small>Create floor paint, walls, furniture and indoor props</small></button>
@@ -168,6 +169,7 @@ function App() {
   const [user, setUser] = useState(undefined);
   const [recreating, setRecreating] = useState(false);
   // Which full-page view is open from the character screen: null, 'world' (editor) or 'play'.
+  const [generatorKind,setGeneratorKind]=useState('exterior');
   const [prototypeMap,setPrototypeMap]=useState(null);
   const [view, setView] = useState(null);
 
@@ -189,7 +191,7 @@ function App() {
     return (
       <main className={(step === 'assets' || step === 'buildings' || step === 'npcs' || step === 'interior-assets' || step === 'detailed-style') ? 'assets-page' : 'editor-page'}>
         <Suspense fallback={<p className="editor-loading">Opening your world…</p>}>
-          {step === 'detailed-style' ? <DetailedStylePrototype user={user} onBack={()=>setView(null)}/> : step === 'interior-assets' ? <AssetsBuilder key="interior" interior user={user} onPrototype={map=>{setPrototypeMap(map);setView('generated');}} onBack={()=>setView(null)}/> : step === 'npcs' ? <NpcAssetsBuilder onBack={()=>setView(null)}/> : step === 'buildings' ? <BuildingAssetsBuilder user={user} onBack={()=>setView(null)}/> : step === 'assets' ? <AssetsBuilder user={user} onBack={()=>setView(null)}/> : step === 'generated' ? <GeneratedMapEditor user={user} initialMap={prototypeMap} onBack={()=>{setPrototypeMap(null);setView(null);}}/> : step === 'world'
+          {step === 'detailed-style' ? <DetailedStylePrototype user={user} onBack={()=>setView(null)}/> : step === 'interior-assets' ? <AssetsBuilder key="interior" interior user={user} onPrototype={map=>{setPrototypeMap(map);setGeneratorKind('interior');setView('generated');}} onBack={()=>setView(null)}/> : step === 'npcs' ? <NpcAssetsBuilder onBack={()=>setView(null)}/> : step === 'buildings' ? <BuildingAssetsBuilder user={user} onBack={()=>setView(null)}/> : step === 'assets' ? <AssetsBuilder user={user} onBack={()=>setView(null)}/> : step === 'generated' ? <GeneratedMapEditor key={generatorKind} mapKind={generatorKind} user={user} initialMap={prototypeMap} onBack={()=>{setPrototypeMap(null);setView(null);}}/> : step === 'world'
             ? <WorldEditor user={user} onBack={() => setView(null)} />
             : <PlayView user={user} onBack={() => setView(null)} onCreateWorld={() => setView('world')} />}
         </Suspense>
@@ -212,7 +214,7 @@ function App() {
           {step === 'loading' && <p>Opening the portal…</p>}
           {step === 'login' && <LoginForm onLogin={setUser} />}
           {step === 'create' && <CharacterCreator user={user} onUpdate={setUser} onSaved={(next) => { setUser(next); setRecreating(false); }} onCancel={user.character ? () => setRecreating(false) : null} />}
-          {step === 'ready' && <CharacterCard user={user} onPlay={() => setView('play')} onCreateWorld={() => setView('world')} onGenerateMap={()=>setView('generated')} onDetailedStyle={()=>setView('detailed-style')} onAssetsBuilder={()=>setView('assets')} onInteriorAssetsBuilder={()=>setView('interior-assets')} onNpcAssetsBuilder={()=>setView('npcs')} onBuildingAssetsBuilder={()=>setView('buildings')} onRecreate={() => setRecreating(true)} onLogout={logout} />}
+          {step === 'ready' && <CharacterCard user={user} onPlay={() => setView('play')} onCreateWorld={() => setView('world')} onGenerateExteriorMap={()=>{setPrototypeMap(null);setGeneratorKind('exterior');setView('generated');}} onGenerateInteriorMap={()=>{setPrototypeMap(null);setGeneratorKind('interior');setView('generated');}} onDetailedStyle={()=>setView('detailed-style')} onAssetsBuilder={()=>setView('assets')} onInteriorAssetsBuilder={()=>setView('interior-assets')} onNpcAssetsBuilder={()=>setView('npcs')} onBuildingAssetsBuilder={()=>setView('buildings')} onRecreate={() => setRecreating(true)} onLogout={logout} />}
           {step === 'create' && <button type="button" className="text-button" onClick={logout}>Log out</button>}
           <div className="login-note"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4" y="7" width="8" height="7" rx="2" /><path d="M5.5 7V4a2.5 2.5 0 0 1 5 0v3" /></svg>One account. Every adventure.</div>
         </div>

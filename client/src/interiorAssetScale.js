@@ -12,7 +12,8 @@ export function interiorAssetBounds(asset){
 }
 
 export function interiorSpriteLayout(asset,data,width,height){
-  const bounds=interiorAssetBounds(asset);if(!bounds)return null;
+  const logical=interiorAssetBounds(asset),scaleFactor=asset.pixelScale===3?3:1;
+  const bounds=logical?{width:logical.width*scaleFactor,height:logical.height*scaleFactor}:null;if(!bounds)return null;
   let left=width,top=height,right=-1,bottom=-1;
   for(let y=0;y<height;y++)for(let x=0;x<width;x++)if(data[(y*width+x)*4+3]>=128){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);}
   if(right<left)return null;

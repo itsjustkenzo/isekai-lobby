@@ -4,7 +4,7 @@ import express from 'express';
 import { ObjectId } from 'mongodb';
 import { PNG } from 'pngjs';
 import { generateTerrainCategory, terrainInput, mountTerrainBuilder } from '../server/terrain-builder.js';
-import { assembleTerrainMap, analyzeTerrainLayout, selectTerrainCollection } from '../server/terrain-map.js';
+import { assembleTerrainMap, analyzeTerrainLayout, selectTerrainCollection, collectionsForMapKind } from '../server/terrain-map.js';
 import { blueprintToMap, MAP_PALETTE } from '../server/dream-map.js';
 import { readGeneratedMedia } from '../server/generated-map-media.js';
 import { fromSaved, toSaved, setAssets, isBlocked } from '../client/src/world/world.js';
@@ -123,5 +123,19 @@ test('layout interpreter uses chat analysis and rejects invented symbols',async(
       return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({rows:Array(16).fill('g'.repeat(16))})}}]})};
     });assert.equal(PNG.sync.read(image).width,16);
     await assert.rejects(analyzeTerrainLayout(png(),{width:16,height:16},'exterior','',async()=>({ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({rows:Array(16).fill('Z'.repeat(16))})}}]})})),/Invalid map blueprint/);
+  }finally{if(previous===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=previous;}
+});
+
+test('explicit exterior mode excludes indoor collections and cannot be overridden by AI classification',async()=>{
+  const outdoor={...terrain,kind:'exterior'},indoor={_id:new ObjectId(),kind:'interior',textures:[{surface:'floor'}]};
+  assert.deepEqual(collectionsForMapKind([outdoor,indoor],'exterior'),[outdoor]);
+  assert.deepEqual(collectionsForMapKind([outdoor,indoor],'interior'),[indoor]);
+  const previous=process.env.OPENROUTER_API_KEY;process.env.OPENROUTER_API_KEY='test';
+  try{
+    const selected=await selectTerrainCollection(png(),[outdoor],async(url,options)=>{
+      assert.match(JSON.parse(options.body).messages[0].content[0].text,/explicitly selected exterior/);
+      return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({terrainId:String(outdoor._id),kind:'interior',reason:'Selected terrain'})}}]})};
+    },'exterior');
+    assert.equal(selected.kind,'exterior');
   }finally{if(previous===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=previous;}
 });

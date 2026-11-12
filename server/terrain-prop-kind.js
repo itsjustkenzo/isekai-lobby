@@ -6,6 +6,6 @@ export function terrainPropKind(asset){
   const name=asset.name??'';
   if(/\b(bed|beds|bunk|cot)\b/i.test(name))return 'Bed';
   if(/\b(table|tables|desk|desks)\b/i.test(name))return 'Table';
-  if(/\b(chair|chairs|seat|seats|stool|stools|sofa|bench)\b/i.test(name))return 'Chair';
+  if(/\b(chair|chairs|armchair|armchairs|seat|seats|stool|stools|sofa|sofas|bench|benches|pew|pews)\b/i.test(name))return 'Chair';
   return 'Furniture';
 }

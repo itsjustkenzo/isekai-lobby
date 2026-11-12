@@ -7,11 +7,11 @@ import {deleteBuildingAsset} from './building-deletion.js';
 import {mountBuildingAssets} from './building-assets.js';
 import {mountObjectBuilder} from './object-builder.js';
 import {mountMechanicsBuilder} from './mechanics-builder.js';
-import {normalizeEnvironmentFootprints} from './environment-variants.js';
+import {normalizeEnvironmentFootprints,restoreShrunkNatureSprites} from './environment-variants.js';
 import {isLiquidTexture} from '../client/src/world/liquidTextures.js';
 import { saveGeneratedMap, deleteGeneratedMap } from './generated-map-storage.js';
 import { readGeneratedMedia } from './generated-map-media.js';
-import { generateMapFromTerrain, selectTerrainCollection } from './terrain-map.js';
+import { generateMapFromTerrain, selectTerrainCollection, collectionsForMapKind } from './terrain-map.js';
 import { mountTerrainBuilder } from './terrain-builder.js';
 import { publicMapError } from './map-analysis-errors.js';
 import {deleteTerrainAsset,deleteTerrainCollection,assertTerrainAssetsNotDeleted} from './terrain-deletion.js';
@@ -472,14 +472,18 @@ async function start() {
     if(!Buffer.isBuffer(req.body)||!detectImageType(req.body))return res.status(400).json({error:'Upload a PNG, JPEG, or WebP map image.'});
     const width=Number(req.query.width),height=Number(req.query.height);
     if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width>8192||height>8192)return res.status(400).json({error:'Invalid reference dimensions.'});
-    const interiorSize=req.query.interiorSize??'medium';
-    if(!['small','medium','large'].includes(interiorSize))return res.status(400).json({error:'Choose a small, medium or large interior size.'});
+    const interiorSize=req.query.interiorSize??'auto';
+    if(!['auto','small','medium','large'].includes(interiorSize))return res.status(400).json({error:'Choose a small, medium or large interior size.'});
+    const requestedKind=req.query.kind??'exterior';
+    if(!['exterior','interior','auto'].includes(requestedKind))return res.status(400).json({error:'Choose exterior, interior or automatic detection.'});
     const key=`dream-map:${req.user._id}`;
     if(generating.has(key))return res.status(409).json({error:'A dream map is already being generated.'});
     generating.add(key);
     try {
-      const candidates=await terrainCollections.find({userId:req.user._id,completed:'paint'},{projection:{title:1,description:1,completed:1,'textures.name':1,'textures.surface':1,'textures.liquid':1,'generatedAssets.name':1}}).sort({updatedAt:-1}).limit(50).toArray();
-      const selection=await selectTerrainCollection(req.body,candidates);
+      const candidates=await terrainCollections.find({userId:req.user._id,completed:'paint'},{projection:{title:1,kind:1,description:1,artStyle:1,completed:1,'textures.name':1,'textures.surface':1,'textures.liquid':1,'generatedAssets.name':1}}).sort({updatedAt:-1}).limit(50).toArray();
+      const compatible=collectionsForMapKind(candidates,requestedKind);
+      if(!compatible.length)return res.status(400).json({error:'Generate a matching '+(requestedKind==='interior'?'interior collection in Interior Asset Builder':'terrain collection in Assets Builder')+' first.'});
+      const selection=await selectTerrainCollection(req.body,compatible,undefined,requestedKind==='auto'?null:requestedKind);
       const collection=await terrainCollections.findOne({_id:new ObjectId(selection.terrainId),userId:req.user._id});
       if(!collection)return res.status(404).json({error:'Terrain collection not found.'});
       if(!collection.completed?.includes('paint'))return res.status(400).json({error:'Generate texture paint for the selected terrain first.'});
@@ -665,7 +669,15 @@ async function start() {
     if(id && !ObjectId.isValid(id))return res.status(400).json({error:'Invalid map ID.'});
     const draft=id?await generatedMapDrafts.findOne({_id:new ObjectId(id),userId:req.user._id}):null;
     if(id&&!draft)return res.status(404).json({error:'Map not found.'});
-    res.json({maps,map:draft?normalizeEnvironmentFootprints(draft.map):null,id:draft?String(draft._id):null});
+    let loadedMap=draft?.map??null;
+    if(loadedMap){
+      if(typeof loadedMap.sourceTerrainId==='string'&&/^[a-f0-9]{24}$/i.test(loadedMap.sourceTerrainId)){
+        const source=await terrainCollections.findOne({_id:new ObjectId(loadedMap.sourceTerrainId),userId:req.user._id},{projection:{generatedAssets:1}});
+        if(source)loadedMap=restoreShrunkNatureSprites(loadedMap,source);
+      }
+      loadedMap=normalizeEnvironmentFootprints(loadedMap);
+    }
+    res.json({maps,map:loadedMap,id:draft?String(draft._id):null});
   }));
   app.put('/api/generated-map',auth,wrap(async(req,res)=>{
     const map=readOutdoorMap(req.body??{}),id=req.body?.prototypeId;

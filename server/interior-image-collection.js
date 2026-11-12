@@ -1,3 +1,4 @@
+import {CURRENT_ART_STYLE} from '../client/src/gameArtStyle.js';
 import {ObjectId} from 'mongodb';
 import {PNG} from 'pngjs';
 import {structuredAnalysis,publicMapError} from './map-analysis-errors.js';
@@ -22,7 +23,7 @@ export function mountInteriorImageCollection(app,{auth,terrains,generating,raw,a
     try{
       const referenceImage=`data:image/png;base64,${req.body.toString('base64')}`;
       const interpreted=await analyze(referenceImage,notes);
-      const row={_id:new ObjectId(),userId:req.user._id,kind:'interior',...interpreted,referenceImage,generatedAssets:[],textures:[],completed:[],planCompleted:[],createdAt:new Date(),updatedAt:new Date()};
+      const row={_id:new ObjectId(),userId:req.user._id,kind:'interior',pixelScale:3,artStyle:CURRENT_ART_STYLE,...interpreted,referenceImage,generatedAssets:[],textures:[],completed:[],planCompleted:[],createdAt:new Date(),updatedAt:new Date()};
       row.assetPlan=await plan(row);
       await terrains.insertOne(row);res.status(201).json({terrain:publicTerrain(row)});
     }catch(error){console.error('Interior reference collection failed:',error.message);const failure=publicMapError(error);res.status(failure.status).json({error:failure.message});}

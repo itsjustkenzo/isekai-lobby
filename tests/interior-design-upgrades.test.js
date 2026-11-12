@@ -24,7 +24,9 @@ test('native footprints distinguish seating and beds; floor lamps are not tablet
 test('tabletop attachment survives save/load, adds no occupied tile and is removed with its support',()=>{
   const {map,collection}=fixture();
   const group={type:'focal',zone:'west',primaryAssetId:'table',secondaryAssetId:'',accentAssetId:'lamp',count:1,x:3,y:6};
-  const result=furnishInterior(map,[group],collection,{preserveReference:true});
+  // Existing surface placements remain supported even though new generation
+  // now intentionally omits small decorations.
+  const result={...map,placed:[{a:'table',x:3,y:6},{a:'lamp',x:3,y:6,supportAssetId:'table',supportX:3,supportY:6,elevation:10}]};
   const lamp=result.placed.find(p=>p.a==='lamp');assert.ok(lamp.supportAssetId);
   assert.equal(validSurfacePlacement(lamp,result.placed,collection.generatedAssets),true);
   assert.equal(validSurfacePlacement(lamp,[],collection.generatedAssets),false);

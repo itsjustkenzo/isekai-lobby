@@ -7,7 +7,7 @@ import {readTerrainPlan,proposeTerrainPlan} from '../server/terrain-plan.js';
 import {generateTerrainCategory,mountTerrainBuilder} from '../server/terrain-builder.js';
 import {readGeneratedMedia} from '../server/generated-map-media.js';
 const item=(kind,name,extra={})=>({id:new ObjectId().toString(),kind,name,description:`Native artwork of ${name}`,placement:'Suitable dry areas',optional:false,selected:true,code:'g',surface:'ground',liquid:false,...extra});
-const plan=()=>({interpretation:'Dry sandy desert with sparse native plants',items:[item('texture','Desert sand'),item('Tree','Columnar cactus'),item('Bush','Thorny shrub'),item('texture','Oasis water',{code:'w',liquid:true,optional:true,selected:false})]});
+const plan=()=>({interpretation:'Dry sandy desert with sparse native plants',items:[item('texture','Desert sand'),item('Tree','Columnar cactus'),item('Bush','Thorny shrub'),item('texture','Oasis water',{code:'w',liquid:true,optional:true,selected:false}),item('Tree','Desert willow'),item('Tree','Desert acacia')]});
 test('planner proposes named ecological families and optional items without requesting artwork',async()=>{
   const previous=process.env.OPENROUTER_API_KEY;process.env.OPENROUTER_API_KEY='test';
   try{const result=await proposeTerrainPlan({title:'Desert',description:'Hot sand and sparse life'},async(url,options)=>{
@@ -67,4 +67,39 @@ test('interior furniture generation has native artwork, footprint and supported 
   assert.deepEqual([result.assets[0].width,result.assets[0].height],[2,1]);
   assert.equal(result.assets[0].assetKind,'Furniture');
   assert.ok(readGeneratedMedia({generatedAssets:result.assets,textures:[]},{placed:[],paint:{}}));
+});
+
+test('outdoor planning corrects missing diversity once and never accepts size-only species duplicates',async()=>{
+  const previous=process.env.OPENROUTER_API_KEY;process.env.OPENROUTER_API_KEY='test';
+  try{
+    let calls=0;
+    const result=await proposeTerrainPlan({title:'Grassland',description:'Green fields'},async(url,options)=>{
+      calls++;const value=plan();
+      if(calls===1)value.items=value.items.filter(p=>p.kind!=='Tree'||p.name==='Columnar cactus');
+      else assert.match(JSON.parse(options.body).messages.at(-1).content,/at least three distinct/);
+      return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify(value)}}]})};
+    });
+    assert.equal(calls,2);assert.equal(result.items.filter(p=>p.kind==='Tree'&&p.selected).length,3);
+    calls=0;
+    await assert.rejects(proposeTerrainPlan({title:'Forest',description:'Oak woods'},async()=>{
+      calls++;const value=plan();let n=0;
+      for(const p of value.items)if(p.kind==='Tree')p.name=['Small oak tree','Medium oak tree','Large oak tree'][n++];
+      return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify(value)}}]})};
+    }),/tree diversity/);assert.equal(calls,2);
+  }finally{if(previous===undefined)delete process.env.OPENROUTER_API_KEY;else process.env.OPENROUTER_API_KEY=previous;}
+});
+
+test('regeneration creates a fresh owner-scoped collection and preserves saved source artwork',async()=>{
+  const owner=new ObjectId(),id=new ObjectId(),source={_id:id,userId:owner,title:'Plains',description:'Oak grassland',pixelScale:1,generatedAssets:[{id:'old-art'}],textures:[],referenceImage:'saved-reference'};
+  let inserted=null,calls=0;
+  const app=express();app.use(express.json());
+  mountTerrainBuilder(app,{auth:(req,res,next)=>{req.user={_id:owner};next();},generating:new Set(),terrains:{findOne:async q=>String(q._id)===String(id)?structuredClone(source):null,insertOne:async row=>{inserted=row;}},proposePlan:async row=>{calls++;assert.equal(row.referenceImage,'saved-reference');return plan();}});
+  const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));
+  try{
+    const base='http://127.0.0.1:'+server.address().port+'/api/terrains/';
+    assert.equal((await fetch(base+new ObjectId()+'/regenerate',{method:'POST'})).status,404);assert.equal(calls,0);
+    const response=await fetch(base+id+'/regenerate',{method:'POST'});assert.equal(response.status,201);
+    assert.notEqual(String(inserted._id),String(id));assert.equal(inserted.userId,owner);assert.equal(inserted.pixelScale,3);
+    assert.deepEqual(inserted.generatedAssets,[]);assert.deepEqual(source.generatedAssets,[{id:'old-art'}]);
+  }finally{await new Promise(resolve=>server.close(resolve));}
 });
